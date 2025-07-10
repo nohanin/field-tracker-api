@@ -8,16 +8,23 @@
     "dev": "nodemon server.js",
     "test": "echo \"No tests specified\""
   },
-  "keywords": ["field", "tracking", "attendance", "api"],
+  "keywords": [
+    "field",
+    "tracking",
+    "attendance",
+    "api"
+  ],
   "author": "Your Name",
   "license": "ISC",
   "dependencies": {
-    "express": "^4.18.2",
     "cors": "^2.8.5",
+    "dotenv": "^16.6.1",
+    "express": "^4.18.2",
     "helmet": "^7.0.0",
-    "dotenv": "^16.3.1"
+    "pg": "^8.16.3"
   },
   "devDependencies": {
+    "@types/pg": "^8.15.4",
     "nodemon": "^3.0.1"
   },
   "engines": {
