@@ -172,7 +172,7 @@ app.post('/api/auth/login', async (req, res) => {
     
     // Get employee by ID
     const employee = await employeeDb.getById(employee_id);
-    
+    message: 'EMPLOYEE ID RECIEVED' + employee_id
     if (!employee) {
       return res.status(401).json({
         success: false,
