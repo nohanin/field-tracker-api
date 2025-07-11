@@ -26,6 +26,48 @@ app.get('/health', (req, res) => {
   });
 });
 
+// Database test endpoint - for debugging only (remove in production)
+app.get('/debug/employees', async (req, res) => {
+  try {
+    const query = 'SELECT id, name, email, pin, is_active FROM employees LIMIT 10';
+    const result = await db.query(query);
+    res.json({
+      success: true,
+      message: 'Employee data retrieved',
+      count: result.rows.length,
+      data: result.rows
+    });
+  } catch (error) {
+    console.error('Debug employees error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Database query failed',
+      error: error.message
+    });
+  }
+});
+
+// Test employee lookup endpoint
+app.get('/debug/employee/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const employee = await employeeDb.getById(id);
+    res.json({
+      success: true,
+      employee_id: id,
+      found: !!employee,
+      data: employee
+    });
+  } catch (error) {
+    console.error('Debug employee lookup error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Employee lookup failed',
+      error: error.message
+    });
+  }
+});
+
 // Check-in route - Allow multiple check-ins
 app.post('/api/attendance/checkin', async (req, res) => {
   try {
@@ -162,6 +204,13 @@ app.post('/api/auth/login', async (req, res) => {
   try {
     const { employee_id, pin_code } = req.body;
     
+    // Log received parameters for debugging
+    console.log('=== LOGIN REQUEST DEBUG ===');
+    console.log('Request body:', JSON.stringify(req.body, null, 2));
+    console.log('Extracted employee_id:', employee_id, '(type:', typeof employee_id, ')');
+    console.log('Extracted pin_code:', pin_code, '(type:', typeof pin_code, ')');
+    console.log('==============================');
+    
     // Validate input
     if (!employee_id || !pin_code) {
       return res.status(400).json({
@@ -172,7 +221,17 @@ app.post('/api/auth/login', async (req, res) => {
     
     // Get employee by ID
     const employee = await employeeDb.getById(employee_id);
-    message: 'EMPLOYEE ID RECIEVED' + employee_id
+    console.log('Database lookup result:', {
+      found: !!employee,
+      employee_data: employee ? {
+        id: employee.id,
+        name: employee.name,
+        pin_exists: !!employee.pin,
+        pin_value: employee.pin,
+        pin_type: typeof employee.pin
+      } : null
+    });
+    
     if (!employee) {
       return res.status(401).json({
         success: false,
@@ -182,9 +241,10 @@ app.post('/api/auth/login', async (req, res) => {
     
     // Check if employee has a PIN set
     if (!employee.pin) {
+      console.log('PIN not set for employee:', employee_id);
       return res.status(401).json({
         success: false,
-        message: 'PIN not set for this employee. Please contact administrator.' + employee_id + ' ' + employee.pin 
+        message: `PIN not set for employee ID ${employee_id}. Please contact administrator.`
       });
     }
     
