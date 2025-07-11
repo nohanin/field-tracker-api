@@ -1,4 +1,96 @@
 // Updated database.js - Modified for multiple check-ins
+const { Pool } = require('pg');
+require('dotenv').config();
+
+// Database connection configuration
+const pool = new Pool({
+  host: process.env.DB_HOST,
+  port: process.env.DB_PORT,
+  database: process.env.DB_NAME,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  ssl: {
+    rejectUnauthorized: false
+  },
+  max: 20,
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 2000,
+});
+
+// Database instance
+const db = {
+  query: (text, params) => pool.query(text, params),
+  pool: pool
+};
+
+// Test database connection
+async function testConnection() {
+  try {
+    const result = await db.query('SELECT NOW()');
+    console.log('Database connected successfully at:', result.rows[0].now);
+    return true;
+  } catch (error) {
+    console.error('Database connection error:', error);
+    throw error;
+  }
+}
+
+// Employee database functions
+const employeeDb = {
+  async getById(id) {
+    const query = 'SELECT * FROM employees WHERE id = $1';
+    const result = await db.query(query, [id]);
+    return result.rows[0];
+  },
+  
+  async getAll() {
+    const query = 'SELECT * FROM employees ORDER BY name';
+    const result = await db.query(query);
+    return result.rows;
+  },
+  
+  async create(employeeData) {
+    const { name, email, phone, assigned_location_id } = employeeData;
+    const query = `
+      INSERT INTO employees (name, email, phone, assigned_location_id, created_at, updated_at)
+      VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+      RETURNING *
+    `;
+    const result = await db.query(query, [name, email, phone, assigned_location_id]);
+    return result.rows[0];
+  }
+};
+
+// Location database functions
+const locationDb = {
+  async getById(id) {
+    const query = 'SELECT * FROM locations WHERE id = $1';
+    const result = await db.query(query, [id]);
+    return result.rows[0];
+  },
+  
+  async isWithinLocation(latitude, longitude, locationId) {
+    const query = `
+      SELECT 
+        *,
+        (6371 * acos(cos(radians($1)) * cos(radians(latitude)) * 
+        cos(radians(longitude) - radians($2)) + sin(radians($1)) * 
+        sin(radians(latitude)))) AS distance
+      FROM locations 
+      WHERE id = $3
+    `;
+    const result = await db.query(query, [latitude, longitude, locationId]);
+    const location = result.rows[0];
+    
+    if (location) {
+      return {
+        ...location,
+        isWithinRadius: location.distance <= (location.radius / 1000) // Convert meters to km
+      };
+    }
+    return null;
+  }
+};
 
 // Attendance-related database functions
 const attendanceDb = {

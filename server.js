@@ -1,4 +1,30 @@
 // Updated server.js API endpoints for multiple check-ins
+const express = require('express');
+const cors = require('cors');
+const helmet = require('helmet');
+require('dotenv').config();
+
+// Import database functions
+const { db, employeeDb, attendanceDb, locationDb, testConnection } = require('./database');
+
+// Initialize Express app
+const app = express();
+const PORT = process.env.PORT || 8000;
+
+// Middleware
+app.use(helmet());
+app.use(cors());
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Health check endpoint
+app.get('/health', (req, res) => {
+  res.json({ 
+    status: 'OK', 
+    timestamp: new Date().toISOString(),
+    service: 'Field Tracker API'
+  });
+});
 
 // Check-in route - Allow multiple check-ins
 app.post('/api/attendance/checkin', async (req, res) => {
@@ -293,3 +319,53 @@ app.get('/api/attendance/status/:employee_id', async (req, res) => {
     });
   }
 });
+
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error('Unhandled error:', err);
+  res.status(500).json({
+    success: false,
+    message: 'Internal server error'
+  });
+});
+
+// Handle 404 - Route not found
+app.use((req, res) => {
+  res.status(404).json({
+    success: false,
+    message: 'Route not found'
+  });
+});
+
+// Start server
+async function startServer() {
+  try {
+    // Test database connection
+    await testConnection();
+    console.log('Database connection successful');
+    
+    // Start the server
+    app.listen(PORT, () => {
+      console.log(`Server running on port ${PORT}`);
+      console.log(`Health check: http://localhost:${PORT}/health`);
+      console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+    });
+  } catch (error) {
+    console.error('Failed to start server:', error);
+    process.exit(1);
+  }
+}
+
+// Handle process termination
+process.on('SIGTERM', () => {
+  console.log('Received SIGTERM, shutting down gracefully');
+  process.exit(0);
+});
+
+process.on('SIGINT', () => {
+  console.log('Received SIGINT, shutting down gracefully');
+  process.exit(0);
+});
+
+// Start the server
+startServer();
