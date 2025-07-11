@@ -29,7 +29,20 @@ app.get('/health', (req, res) => {
 // Check-in route - Allow multiple check-ins
 app.post('/api/attendance/checkin', async (req, res) => {
   try {
+    // Log all received parameters for debugging
+    console.log('=== CHECK-IN REQUEST DEBUG ===');
+    console.log('Request body:', JSON.stringify(req.body, null, 2));
+    console.log('Request timestamp:', new Date().toISOString());
+    console.log('==============================');
+    
     const { employee_id, latitude, longitude, location_id } = req.body;
+    
+    // Log extracted parameters
+    console.log('Extracted parameters:');
+    console.log('- employee_id:', employee_id, '(type:', typeof employee_id, ')');
+    console.log('- latitude:', latitude, '(type:', typeof latitude, ')');
+    console.log('- longitude:', longitude, '(type:', typeof longitude, ')');
+    console.log('- location_id:', location_id, '(type:', typeof location_id, ')');
     
     // Validate input
     if (!employee_id) {
@@ -163,7 +176,7 @@ app.post('/api/auth/login', async (req, res) => {
     if (!employee) {
       return res.status(401).json({
         success: false,
-        message: 'Invalid employee ID or PIN'
+        message: 'Invalid employee ID or PIN' 
       });
     }
     
@@ -185,7 +198,7 @@ app.post('/api/auth/login', async (req, res) => {
     
     // Update last login
     await employeeDb.updateLastLogin(employee_id);
-    
+
     // Return success response with employee data
     res.json({
       success: true,
