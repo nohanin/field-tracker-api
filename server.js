@@ -26,6 +26,64 @@ app.get('/health', (req, res) => {
   });
 });
 
+// Root route - API documentation
+app.get('/', (req, res) => {
+  res.json({
+    success: true,
+    message: 'Field Tracker API',
+    version: '1.0.0',
+    endpoints: {
+      health: 'GET /health',
+      attendance: {
+        checkin: 'POST /api/attendance/checkin',
+        checkout: 'POST /api/attendance/checkout',
+        status: 'GET /api/attendance/status/:employee_id'
+      }
+    },
+    documentation: {
+      checkin: {
+        method: 'POST',
+        url: '/api/attendance/checkin',
+        body: {
+          employee_id: 'required - Employee ID',
+          latitude: 'required - Latitude coordinate',
+          longitude: 'required - Longitude coordinate',
+          location_id: 'optional - Location ID for verification'
+        }
+      },
+      checkout: {
+        method: 'POST',
+        url: '/api/attendance/checkout',
+        body: {
+          employee_id: 'required - Employee ID',
+          latitude: 'required - Latitude coordinate',
+          longitude: 'required - Longitude coordinate'
+        }
+      },
+      status: {
+        method: 'GET',
+        url: '/api/attendance/status/:employee_id',
+        description: 'Get current attendance status for an employee'
+      }
+    }
+  });
+});
+
+// API info route
+app.get('/api', (req, res) => {
+  res.json({
+    success: true,
+    message: 'Field Tracker API v1.0.0',
+    available_endpoints: [
+      'GET /health',
+      'GET /api',
+      'POST /api/attendance/checkin',
+      'POST /api/attendance/checkout',
+      'GET /api/attendance/status/:employee_id'
+    ]
+  });
+});
+
 // Check-in route - Allow multiple check-ins
 app.post('/api/attendance/checkin', async (req, res) => {
   try {
