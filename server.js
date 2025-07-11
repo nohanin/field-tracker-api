@@ -226,9 +226,9 @@ app.post('/api/auth/login', async (req, res) => {
       employee_data: employee ? {
         id: employee.id,
         name: employee.name,
-        pin_exists: !!employee.pin,
-        pin_value: employee.pin,
-        pin_type: typeof employee.pin
+        pin_exists: !!employee.pin_code,
+        pin_value: employee.pin_code,
+        pin_type: typeof employee.pin_code
       } : null
     });
     
@@ -240,7 +240,7 @@ app.post('/api/auth/login', async (req, res) => {
     }
     
     // Check if employee has a PIN set
-    if (!employee.pin) {
+    if (!employee.pin_code) {
       console.log('PIN not set for employee:', employee_id);
       return res.status(401).json({
         success: false,
@@ -249,7 +249,7 @@ app.post('/api/auth/login', async (req, res) => {
     }
     
     // Verify PIN (simple string comparison for now)
-    if (pin_code.toString() !== employee.pin.toString()) {
+    if (pin_code.toString() !== employee.pin_code.toString()) {
       return res.status(401).json({
         success: false,
         message: 'Invalid employee ID or PIN'
@@ -257,7 +257,7 @@ app.post('/api/auth/login', async (req, res) => {
     }
     
     // Update last login
-    await employeeDb.updateLastLogin(employee_id);
+   // await employeeDb.updateLastLogin(employee_id);
 
     // Return success response with employee data
     res.json({

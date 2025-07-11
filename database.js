@@ -63,16 +63,16 @@ const employeeDb = {
     return result.rows[0];
   },
   
-  async updateLastLogin(id) {
-    const query = `
-      UPDATE employees 
-      SET last_login = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
-      WHERE id = $1
-      RETURNING last_login
-    `;
-    const result = await db.query(query, [id]);
-    return result.rows[0];
-  }
+  // async updateLastLogin(id) {
+  //   const query = `
+  //     UPDATE employees 
+  //     SET last_login = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+  //     WHERE id = $1
+  //     RETURNING last_login
+  //   `;
+  //   const result = await db.query(query, [id]);
+  //   return result.rows[0];
+  // }
 };
 
 // Location database functions
