@@ -1,0 +1,11 @@
+{
+  "version": "1.0.0",
+  "defaultProvider": "azure",
+  "providers": {
+    "azure": {
+      "web": {
+        "enableLogging": true
+      }
+    }
+  }
+}

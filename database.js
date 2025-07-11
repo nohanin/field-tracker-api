@@ -2,20 +2,32 @@
 const { Pool } = require('pg');
 require('dotenv').config();
 
-// Database connection configuration
-const pool = new Pool({
-  host: process.env.DB_HOST,
-  port: process.env.DB_PORT,
-  database: process.env.DB_NAME,
-  user: process.env.DB_USER,
+// Database connection configuration with Azure-friendly settings
+const dbConfig = {
+  host: process.env.DB_HOST || 'field-tracker-db.postgres.database.azure.com',
+  port: parseInt(process.env.DB_PORT) || 5432,
+  database: process.env.DB_NAME || 'fieldtracker',
+  user: process.env.DB_USER || 'ufoadmin',
   password: process.env.DB_PASSWORD,
   ssl: {
     rejectUnauthorized: false
   },
   max: 20,
   idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 2000,
+  connectionTimeoutMillis: 10000, // Increased for Azure
+};
+
+// Log configuration for debugging (without password)
+console.log('Database configuration:', {
+  host: dbConfig.host,
+  port: dbConfig.port,
+  database: dbConfig.database,
+  user: dbConfig.user,
+  ssl: dbConfig.ssl,
+  passwordSet: !!dbConfig.password
 });
+
+const pool = new Pool(dbConfig);
 
 // Database instance
 const db = {
@@ -26,11 +38,19 @@ const db = {
 // Test database connection
 async function testConnection() {
   try {
-    const result = await db.query('SELECT NOW()');
-    console.log('Database connected successfully at:', result.rows[0].now);
+    console.log('Testing database connection...');
+    const result = await db.query('SELECT NOW() as current_time, version() as pg_version');
+    console.log('Database connected successfully at:', result.rows[0].current_time);
+    console.log('PostgreSQL version:', result.rows[0].pg_version);
     return true;
   } catch (error) {
-    console.error('Database connection error:', error);
+    console.error('Database connection error:', error.message);
+    console.error('Connection details:', {
+      host: dbConfig.host,
+      port: dbConfig.port,
+      database: dbConfig.database,
+      user: dbConfig.user
+    });
     throw error;
   }
 }

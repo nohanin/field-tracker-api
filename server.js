@@ -477,6 +477,18 @@ app.use((req, res) => {
 // Start server
 async function startServer() {
   try {
+    // Log environment info for debugging
+    console.log('Starting server...');
+    console.log('Environment:', process.env.NODE_ENV || 'development');
+    console.log('Port:', PORT);
+    console.log('Environment variables check:', {
+      DB_HOST: !!process.env.DB_HOST,
+      DB_PORT: !!process.env.DB_PORT,
+      DB_NAME: !!process.env.DB_NAME,
+      DB_USER: !!process.env.DB_USER,
+      DB_PASSWORD: !!process.env.DB_PASSWORD
+    });
+    
     // Test database connection
     await testConnection();
     console.log('Database connection successful');
