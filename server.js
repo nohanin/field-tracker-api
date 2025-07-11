@@ -77,11 +77,90 @@ app.get('/api', (req, res) => {
     available_endpoints: [
       'GET /health',
       'GET /api',
+      'GET /employees',
+      'GET /employees/:id',
+      'POST /employees',
       'POST /api/attendance/checkin',
       'POST /api/attendance/checkout',
       'GET /api/attendance/status/:employee_id'
     ]
   });
+});
+
+// Employee routes
+app.get('/employees', async (req, res) => {
+  try {
+    const employees = await employeeDb.getAll();
+    res.json({
+      success: true,
+      data: employees,
+      count: employees.length
+    });
+  } catch (error) {
+    console.error('Get employees error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error while fetching employees'
+    });
+  }
+});
+
+app.get('/employees/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const employee = await employeeDb.getById(id);
+    
+    if (!employee) {
+      return res.status(404).json({
+        success: false,
+        message: 'Employee not found'
+      });
+    }
+    
+    res.json({
+      success: true,
+      data: employee
+    });
+  } catch (error) {
+    console.error('Get employee error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error while fetching employee'
+    });
+  }
+});
+
+app.post('/employees', async (req, res) => {
+  try {
+    const { name, email, phone, assigned_location_id } = req.body;
+    
+    // Validate input
+    if (!name) {
+      return res.status(400).json({
+        success: false,
+        message: 'Name is required'
+      });
+    }
+    
+    const employee = await employeeDb.create({
+      name,
+      email,
+      phone,
+      assigned_location_id
+    });
+    
+    res.status(201).json({
+      success: true,
+      message: 'Employee created successfully',
+      data: employee
+    });
+  } catch (error) {
+    console.error('Create employee error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error while creating employee'
+    });
+  }
 });
 
 // Check-in route - Allow multiple check-ins
