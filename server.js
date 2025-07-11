@@ -184,7 +184,7 @@ app.post('/api/auth/login', async (req, res) => {
     if (!employee.pin) {
       return res.status(401).json({
         success: false,
-        message: 'PIN not set for this employee. Please contact administrator.'
+        message: 'PIN not set for this employee. Please contact administrator.' + employee_id + ' ' + employee.pin 
       });
     }
     
