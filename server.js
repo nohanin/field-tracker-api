@@ -26,143 +26,6 @@ app.get('/health', (req, res) => {
   });
 });
 
-// Root route - API documentation
-app.get('/', (req, res) => {
-  res.json({
-    success: true,
-    message: 'Field Tracker API',
-    version: '1.0.0',
-    endpoints: {
-      health: 'GET /health',
-      attendance: {
-        checkin: 'POST /api/attendance/checkin',
-        checkout: 'POST /api/attendance/checkout',
-        status: 'GET /api/attendance/status/:employee_id'
-      }
-    },
-    documentation: {
-      checkin: {
-        method: 'POST',
-        url: '/api/attendance/checkin',
-        body: {
-          employee_id: 'required - Employee ID',
-          latitude: 'required - Latitude coordinate',
-          longitude: 'required - Longitude coordinate',
-          location_id: 'optional - Location ID for verification'
-        }
-      },
-      checkout: {
-        method: 'POST',
-        url: '/api/attendance/checkout',
-        body: {
-          employee_id: 'required - Employee ID',
-          latitude: 'required - Latitude coordinate',
-          longitude: 'required - Longitude coordinate'
-        }
-      },
-      status: {
-        method: 'GET',
-        url: '/api/attendance/status/:employee_id',
-        description: 'Get current attendance status for an employee'
-      }
-    }
-  });
-});
-
-// API info route
-app.get('/api', (req, res) => {
-  res.json({
-    success: true,
-    message: 'Field Tracker API v1.0.0',
-    available_endpoints: [
-      'GET /health',
-      'GET /api',
-      'GET /employees',
-      'GET /employees/:id',
-      'POST /employees',
-      'POST /api/attendance/checkin',
-      'POST /api/attendance/checkout',
-      'GET /api/attendance/status/:employee_id'
-    ]
-  });
-});
-
-// Employee routes
-app.get('/employees', async (req, res) => {
-  try {
-    const employees = await employeeDb.getAll();
-    res.json({
-      success: true,
-      data: employees,
-      count: employees.length
-    });
-  } catch (error) {
-    console.error('Get employees error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Internal server error while fetching employees'
-    });
-  }
-});
-
-app.get('/employees/:id', async (req, res) => {
-  try {
-    const { id } = req.params;
-    const employee = await employeeDb.getById(id);
-    
-    if (!employee) {
-      return res.status(404).json({
-        success: false,
-        message: 'Employee not found'
-      });
-    }
-    
-    res.json({
-      success: true,
-      data: employee
-    });
-  } catch (error) {
-    console.error('Get employee error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Internal server error while fetching employee'
-    });
-  }
-});
-
-app.post('/employees', async (req, res) => {
-  try {
-    const { name, email, phone, assigned_location_id } = req.body;
-    
-    // Validate input
-    if (!name) {
-      return res.status(400).json({
-        success: false,
-        message: 'Name is required'
-      });
-    }
-    
-    const employee = await employeeDb.create({
-      name,
-      email,
-      phone,
-      assigned_location_id
-    });
-    
-    res.status(201).json({
-      success: true,
-      message: 'Employee created successfully',
-      data: employee
-    });
-  } catch (error) {
-    console.error('Create employee error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Internal server error while creating employee'
-    });
-  }
-});
-
 // Check-in route - Allow multiple check-ins
 app.post('/api/attendance/checkin', async (req, res) => {
   try {
@@ -280,6 +143,79 @@ app.post('/api/attendance/checkin', async (req, res) => {
     });
   }
 });
+
+// Employee Login API
+app.post('/api/auth/login', async (req, res) => {
+  try {
+    const { employee_id, pin_code } = req.body;
+    
+    // Validate input
+    if (!employee_id || !pin_code) {
+      return res.status(400).json({
+        success: false,
+        message: 'Employee ID and PIN are required'
+      });
+    }
+    
+    // Get employee by ID
+    const employee = await employeeDb.getById(employee_id);
+    
+    if (!employee) {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid employee ID or PIN'
+      });
+    }
+    
+    // Check if employee has a PIN set
+    if (!employee.pin) {
+      return res.status(401).json({
+        success: false,
+        message: 'PIN not set for this employee. Please contact administrator.'
+      });
+    }
+    
+    // Verify PIN (simple string comparison for now)
+    if (pin_code.toString() !== employee.pin.toString()) {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid employee ID or PIN'
+      });
+    }
+    
+    // Update last login
+    await employeeDb.updateLastLogin(employee_id);
+    
+    // Return success response with employee data
+    res.json({
+      success: true,
+      message: 'Login successful',
+      data: {
+        id: employee.id,
+        employee_id: employee.id,
+        name: employee.name,
+        employee_name: employee.name,
+        email: employee.email,
+        employee_email: employee.email,
+        phone: employee.phone,
+        employee_phone: employee.phone,
+        assigned_location_id: employee.assigned_location_id,
+        is_active: employee.is_active || true
+      }
+    });
+    
+  } catch (error) {
+    console.error('Login error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error during login'
+    });
+  }
+});
+
+
+
+
 
 // Check-out route - Check out from current session
 app.post('/api/attendance/checkout', async (req, res) => {
@@ -457,6 +393,26 @@ app.get('/api/attendance/status/:employee_id', async (req, res) => {
   }
 });
 
+// Root route - API documentation
+app.get('/', (req, res) => {
+  res.json({
+    success: true,
+    message: 'Field Tracker API',
+    version: '1.0.0',
+    endpoints: {
+      health: 'GET /health',
+      auth: {
+        login: 'POST /api/auth/login'
+      },
+      attendance: {
+        checkin: 'POST /api/attendance/checkin',
+        checkout: 'POST /api/attendance/checkout',
+        status: 'GET /api/attendance/status/:employee_id'
+      }
+    }
+  });
+});
+
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error('Unhandled error:', err);
@@ -477,18 +433,6 @@ app.use((req, res) => {
 // Start server
 async function startServer() {
   try {
-    // Log environment info for debugging
-    console.log('Starting server...');
-    console.log('Environment:', process.env.NODE_ENV || 'development');
-    console.log('Port:', PORT);
-    console.log('Environment variables check:', {
-      DB_HOST: !!process.env.DB_HOST,
-      DB_PORT: !!process.env.DB_PORT,
-      DB_NAME: !!process.env.DB_NAME,
-      DB_USER: !!process.env.DB_USER,
-      DB_PASSWORD: !!process.env.DB_PASSWORD
-    });
-    
     // Test database connection
     await testConnection();
     console.log('Database connection successful');
@@ -497,6 +441,7 @@ async function startServer() {
     app.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);
       console.log(`Health check: http://localhost:${PORT}/health`);
+      console.log(`API documentation: http://localhost:${PORT}/`);
       console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
     });
   } catch (error) {

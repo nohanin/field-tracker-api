@@ -2,32 +2,20 @@
 const { Pool } = require('pg');
 require('dotenv').config();
 
-// Database connection configuration with Azure-friendly settings
-const dbConfig = {
-  host: process.env.DB_HOST || 'field-tracker-db.postgres.database.azure.com',
-  port: parseInt(process.env.DB_PORT) || 5432,
-  database: process.env.DB_NAME || 'fieldtracker',
-  user: process.env.DB_USER || 'ufoadmin',
+// Database connection configuration
+const pool = new Pool({
+  host: process.env.DB_HOST,
+  port: process.env.DB_PORT,
+  database: process.env.DB_NAME,
+  user: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
   ssl: {
     rejectUnauthorized: false
   },
   max: 20,
   idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 10000, // Increased for Azure
-};
-
-// Log configuration for debugging (without password)
-console.log('Database configuration:', {
-  host: dbConfig.host,
-  port: dbConfig.port,
-  database: dbConfig.database,
-  user: dbConfig.user,
-  ssl: dbConfig.ssl,
-  passwordSet: !!dbConfig.password
+  connectionTimeoutMillis: 2000,
 });
-
-const pool = new Pool(dbConfig);
 
 // Database instance
 const db = {
@@ -38,19 +26,11 @@ const db = {
 // Test database connection
 async function testConnection() {
   try {
-    console.log('Testing database connection...');
-    const result = await db.query('SELECT NOW() as current_time, version() as pg_version');
-    console.log('Database connected successfully at:', result.rows[0].current_time);
-    console.log('PostgreSQL version:', result.rows[0].pg_version);
+    const result = await db.query('SELECT NOW()');
+    console.log('Database connected successfully at:', result.rows[0].now);
     return true;
   } catch (error) {
-    console.error('Database connection error:', error.message);
-    console.error('Connection details:', {
-      host: dbConfig.host,
-      port: dbConfig.port,
-      database: dbConfig.database,
-      user: dbConfig.user
-    });
+    console.error('Database connection error:', error);
     throw error;
   }
 }
@@ -63,20 +43,14 @@ const employeeDb = {
     return result.rows[0];
   },
   
-  async getAll() {
-    const query = 'SELECT * FROM employees ORDER BY name';
-    const result = await db.query(query);
-    return result.rows;
-  },
-  
-  async create(employeeData) {
-    const { name, email, phone, assigned_location_id } = employeeData;
+  async updateLastLogin(id) {
     const query = `
-      INSERT INTO employees (name, email, phone, assigned_location_id, created_at, updated_at)
-      VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-      RETURNING *
+      UPDATE employees 
+      SET last_login = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+      WHERE id = $1
+      RETURNING last_login
     `;
-    const result = await db.query(query, [name, email, phone, assigned_location_id]);
+    const result = await db.query(query, [id]);
     return result.rows[0];
   }
 };
@@ -105,7 +79,7 @@ const locationDb = {
     if (location) {
       return {
         ...location,
-        isWithinRadius: location.distance <= (location.radius / 1000) // Convert meters to km
+        isWithinRadius: location.distance <= (location.radius / 1000)
       };
     }
     return null;
