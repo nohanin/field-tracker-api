@@ -1,4 +1,4 @@
-// Updated database.js - Modified for multiple check-ins
+// Updated database.js - Modified for multiple check-ins + location search
 const { Pool } = require('pg');
 require('dotenv').config();
 
@@ -103,6 +103,68 @@ const locationDb = {
       };
     }
     return null;
+  },
+
+  // New function: Search locations by location_code and/or location_type
+  async searchLocations(locationCode = null, locationType = null) {
+    let query = `
+      SELECT location_code, name, state 
+      FROM locations 
+      WHERE 1 = 1
+    `;
+    const params = [];
+    let paramCount = 0;
+
+    // Add location_code filter if provided
+    if (locationCode) {
+      paramCount++;
+      query += ` AND LOWER(location_code) LIKE LOWER($${paramCount})`;
+      params.push(`%${locationCode}%`);
+    }
+
+    // Add location_type filter if provided
+    if (locationType) {
+      paramCount++;
+      query += ` AND LOWER(location_type) LIKE LOWER($${paramCount})`;
+      params.push(`%${locationType}%`);
+    }
+
+    // Order by location_code for consistent results
+    query += ` ORDER BY location_code, name`;
+
+    const result = await db.query(query, params);
+    return result.rows;
+  },
+
+  // Alternative exact match search
+  async searchLocationsExact(locationCode = null, locationType = null) {
+    let query = `
+      SELECT location_code, name, state 
+      FROM locations 
+      WHERE 1 = 1
+    `;
+    const params = [];
+    let paramCount = 0;
+
+    // Add exact location_code filter if provided
+    if (locationCode) {
+      paramCount++;
+      query += ` AND location_code = $${paramCount}`;
+      params.push(locationCode);
+    }
+
+    // Add exact location_type filter if provided
+    if (locationType) {
+      paramCount++;
+      query += ` AND location_type = $${paramCount}`;
+      params.push(locationType);
+    }
+
+    // Order by location_code for consistent results
+    query += ` ORDER BY location_code, name`;
+
+    const result = await db.query(query, params);
+    return result.rows;
   }
 };
 

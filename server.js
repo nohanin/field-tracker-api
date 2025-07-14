@@ -1,4 +1,4 @@
-// Updated server.js API endpoints for multiple check-ins
+// Updated server.js API endpoints for multiple check-ins + location search
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
@@ -63,6 +63,160 @@ app.get('/debug/employee/:id', async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Employee lookup failed',
+      error: error.message
+    });
+  }
+});
+
+// NEW: Location search API endpoints
+// Search locations with query parameters (supports partial matching)
+app.get('/api/locations/search', async (req, res) => {
+  try {
+    const { location_code, location_type } = req.query;
+    
+    // Log search parameters for debugging
+    console.log('=== LOCATION SEARCH REQUEST ===');
+    console.log('Query parameters:', { location_code, location_type });
+    console.log('==============================');
+    
+    // Validate that at least one search parameter is provided
+    if (!location_code && !location_type) {
+      return res.status(400).json({
+        success: false,
+        message: 'At least one search parameter (location_code or location_type) is required'
+      });
+    }
+    
+    // Search locations using partial matching
+    const locations = await locationDb.searchLocations(location_code, location_type);
+    
+    const response = {
+      success: true,
+      message: 'Location search completed',
+      search_criteria: {
+        location_code: location_code || null,
+        location_type: location_type || null
+      },
+      count: locations.length,
+      data: locations
+    };
+    
+    console.log('Search results:', {
+      criteria: { location_code, location_type },
+      found: locations.length,
+      results: locations
+    });
+    
+    res.json(response);
+    
+  } catch (error) {
+    console.error('Location search error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error during location search',
+      error: error.message
+    });
+  }
+});
+
+// Search locations with exact matching
+app.get('/api/locations/search-exact', async (req, res) => {
+  try {
+    const { location_code, location_type } = req.query;
+    
+    // Log search parameters for debugging
+    console.log('=== EXACT LOCATION SEARCH REQUEST ===');
+    console.log('Query parameters:', { location_code, location_type });
+    console.log('====================================');
+    
+    // Validate that at least one search parameter is provided
+    if (!location_code && !location_type) {
+      return res.status(400).json({
+        success: false,
+        message: 'At least one search parameter (location_code or location_type) is required'
+      });
+    }
+    
+    // Search locations using exact matching
+    const locations = await locationDb.searchLocationsExact(location_code, location_type);
+    
+    const response = {
+      success: true,
+      message: 'Exact location search completed',
+      search_criteria: {
+        location_code: location_code || null,
+        location_type: location_type || null
+      },
+      count: locations.length,
+      data: locations
+    };
+    
+    console.log('Exact search results:', {
+      criteria: { location_code, location_type },
+      found: locations.length,
+      results: locations
+    });
+    
+    res.json(response);
+    
+  } catch (error) {
+    console.error('Exact location search error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error during exact location search',
+      error: error.message
+    });
+  }
+});
+
+// Alternative POST endpoint for location search (for complex search criteria)
+app.post('/api/locations/search', async (req, res) => {
+  try {
+    const { location_code, location_type, exact_match = false } = req.body;
+    
+    // Log search parameters for debugging
+    console.log('=== LOCATION SEARCH POST REQUEST ===');
+    console.log('Request body:', JSON.stringify(req.body, null, 2));
+    console.log('===================================');
+    
+    // Validate that at least one search parameter is provided
+    if (!location_code && !location_type) {
+      return res.status(400).json({
+        success: false,
+        message: 'At least one search parameter (location_code or location_type) is required'
+      });
+    }
+    
+    // Choose search method based on exact_match flag
+    const locations = exact_match 
+      ? await locationDb.searchLocationsExact(location_code, location_type)
+      : await locationDb.searchLocations(location_code, location_type);
+    
+    const response = {
+      success: true,
+      message: `Location search completed (${exact_match ? 'exact' : 'partial'} matching)`,
+      search_criteria: {
+        location_code: location_code || null,
+        location_type: location_type || null,
+        exact_match: exact_match
+      },
+      count: locations.length,
+      data: locations
+    };
+    
+    console.log('POST search results:', {
+      criteria: { location_code, location_type, exact_match },
+      found: locations.length,
+      results: locations
+    });
+    
+    res.json(response);
+    
+  } catch (error) {
+    console.error('Location search POST error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error during location search',
       error: error.message
     });
   }
@@ -286,10 +440,6 @@ app.post('/api/auth/login', async (req, res) => {
   }
 });
 
-
-
-
-
 // Check-out route - Check out from current session
 app.post('/api/attendance/checkout', async (req, res) => {
   try {
@@ -481,6 +631,11 @@ app.get('/', (req, res) => {
         checkin: 'POST /api/attendance/checkin',
         checkout: 'POST /api/attendance/checkout',
         status: 'GET /api/attendance/status/:employee_id'
+      },
+      locations: {
+        search: 'GET /api/locations/search?location_code=&location_type=',
+        searchExact: 'GET /api/locations/search-exact?location_code=&location_type=',
+        searchPost: 'POST /api/locations/search'
       }
     }
   });
