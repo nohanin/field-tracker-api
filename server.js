@@ -231,7 +231,7 @@ app.post('/api/attendance/checkin', async (req, res) => {
     console.log('Request timestamp:', new Date().toISOString());
     console.log('==============================');
     
-    const { employee_id, latitude, longitude, location_id, location_code } = req.body;
+    const { employee_id, latitude, longitude, location_id, location_code, location_type } = req.body;
     
     // Log extracted parameters
     console.log('Extracted parameters:');
@@ -240,6 +240,7 @@ app.post('/api/attendance/checkin', async (req, res) => {
     console.log('- longitude:', longitude, '(type:', typeof longitude, ')');
     console.log('- location_id:', location_id, '(type:', typeof location_id, ')');
     console.log('- location_code:', location_code, '(type:', typeof location_code, ')');
+    console.log('- location_type:', location_type, '(type:', typeof location_type, ')');
     
     // Validate input
     if (!employee_id) {
@@ -295,8 +296,13 @@ app.post('/api/attendance/checkin', async (req, res) => {
     // Verify location if location_id provided
     let locationVerified = false;
     let locationName = null;
+    let finalLocationCode = location_code;
     
-    if (location_id || employee.assigned_location_id) {
+    // Handle location type "others" - store location_code as-is
+    if (location_type && location_type.toLowerCase() === 'others') {
+      console.log('Location type is "others" - storing location_code as-is:', location_code);
+      finalLocationCode = location_code;
+    } else if (location_id || employee.assigned_location_id) {
       const checkLocationId = location_id || employee.assigned_location_id;
       const locationCheck = await locationDb.isWithinLocation(latitude, longitude, checkLocationId);
       
@@ -312,7 +318,7 @@ app.post('/api/attendance/checkin', async (req, res) => {
       latitude, 
       longitude, 
       locationVerified,
-      location_code
+      finalLocationCode
     );
     
     // Get today's summary
@@ -332,6 +338,7 @@ app.post('/api/attendance/checkin', async (req, res) => {
         },
         location_verified: attendance.location_verified,
         location_name: locationName,
+        location_type: location_type,
         check_in_location_code: attendance.check_in_location_code,
         daily_summary: dailySummary,
         server_time: new Date().toISOString()
@@ -446,7 +453,7 @@ app.post('/api/auth/login', async (req, res) => {
 // Check-out route - Check out from current session
 app.post('/api/attendance/checkout', async (req, res) => {
   try {
-    const { employee_id, latitude, longitude, location_code } = req.body;
+    const { employee_id, latitude, longitude, location_code, location_type } = req.body;
     
     // Log all received parameters for debugging
     console.log('=== CHECK-OUT REQUEST DEBUG ===');
@@ -457,6 +464,7 @@ app.post('/api/attendance/checkout', async (req, res) => {
     console.log('- latitude:', latitude, '(type:', typeof latitude, ')');
     console.log('- longitude:', longitude, '(type:', typeof longitude, ')');
     console.log('- location_code:', location_code, '(type:', typeof location_code, ')');
+    console.log('- location_type:', location_type, '(type:', typeof location_type, ')');
     console.log('==============================');
     
     // Validate input
@@ -500,8 +508,17 @@ app.post('/api/attendance/checkout', async (req, res) => {
       });
     }
     
+    // Determine final location code based on location type
+    let finalLocationCode = location_code;
+    
+    // Handle location type "others" - store location_code as-is
+    if (location_type && location_type.toLowerCase() === 'others') {
+      console.log('Location type is "others" - storing location_code as-is:', location_code);
+      finalLocationCode = location_code;
+    }
+    
     // Record check-out
-    const attendance = await attendanceDb.checkOut(employee_id, latitude, longitude, location_code);
+    const attendance = await attendanceDb.checkOut(employee_id, latitude, longitude, finalLocationCode);
     
     if (!attendance) {
       return res.status(500).json({
@@ -534,6 +551,7 @@ app.post('/api/attendance/checkout', async (req, res) => {
           }
         },
         location_verified: attendance.location_verified,
+        location_type: location_type,
         check_in_location_code: attendance.check_in_location_code,
         check_out_location_code: attendance.check_out_location_code,
         daily_summary: dailySummary,
@@ -644,8 +662,8 @@ app.get('/', (req, res) => {
         login: 'POST /api/auth/login'
       },
       attendance: {
-        checkin: 'POST /api/attendance/checkin',
-        checkout: 'POST /api/attendance/checkout',
+        checkin: 'POST /api/attendance/checkin (body: employee_id, latitude, longitude, location_code, location_type)',
+        checkout: 'POST /api/attendance/checkout (body: employee_id, latitude, longitude, location_code, location_type)',
         status: 'GET /api/attendance/status/:employee_id'
       },
       locations: {
@@ -653,6 +671,9 @@ app.get('/', (req, res) => {
         searchExact: 'GET /api/locations/search-exact?location_code=&location_type=',
         searchPost: 'POST /api/locations/search'
       }
+    },
+    notes: {
+      location_type: 'When location_type is "others", location_code is stored as-is without location verification'
     }
   });
 });
