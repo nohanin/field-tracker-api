@@ -27,7 +27,7 @@ CREATE TABLE IF NOT EXISTS locations (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Create attendance table (with location_code column)
+-- Create attendance table (with separate location_code columns for check-in and check-out)
 CREATE TABLE IF NOT EXISTS attendance (
     id SERIAL PRIMARY KEY,
     employee_id INTEGER NOT NULL REFERENCES employees(id),
@@ -40,7 +40,8 @@ CREATE TABLE IF NOT EXISTS attendance (
     check_out_longitude DECIMAL(11, 8) NULL,
     location_verified BOOLEAN DEFAULT false,
     total_hours DECIMAL(5, 2) NULL, -- Calculated on check-out
-    location_code VARCHAR(15) NULL, -- Location code for attendance tracking
+    check_in_location_code VARCHAR(15) NULL, -- Location code for check-in
+    check_out_location_code VARCHAR(15) NULL, -- Location code for check-out
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

@@ -332,7 +332,7 @@ app.post('/api/attendance/checkin', async (req, res) => {
         },
         location_verified: attendance.location_verified,
         location_name: locationName,
-        location_code: attendance.location_code,
+        check_in_location_code: attendance.check_in_location_code,
         daily_summary: dailySummary,
         server_time: new Date().toISOString()
       }
@@ -534,7 +534,8 @@ app.post('/api/attendance/checkout', async (req, res) => {
           }
         },
         location_verified: attendance.location_verified,
-        location_code: attendance.location_code,
+        check_in_location_code: attendance.check_in_location_code,
+        check_out_location_code: attendance.check_out_location_code,
         daily_summary: dailySummary,
         server_time: new Date().toISOString()
       }
