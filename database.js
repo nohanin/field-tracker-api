@@ -210,21 +210,21 @@ const attendanceDb = {
   },
 
   // Record check-in (always create new record)
-  async checkIn(employeeId, latitude, longitude, locationVerified = false) {
+  async checkIn(employeeId, latitude, longitude, locationVerified = false, locationCode = null) {
     const query = `
       INSERT INTO attendance (
         employee_id, attendance_date, check_in_time, 
-        check_in_latitude, check_in_longitude, location_verified
-      ) VALUES ($1, CURRENT_DATE, CURRENT_TIMESTAMP, $2, $3, $4)
+        check_in_latitude, check_in_longitude, location_verified, location_code
+      ) VALUES ($1, CURRENT_DATE, CURRENT_TIMESTAMP, $2, $3, $4, $5)
       RETURNING id, employee_id, attendance_date, check_in_time, 
-               check_in_latitude, check_in_longitude, location_verified
+               check_in_latitude, check_in_longitude, location_verified, location_code
     `;
-    const result = await db.query(query, [employeeId, latitude, longitude, locationVerified]);
+    const result = await db.query(query, [employeeId, latitude, longitude, locationVerified, locationCode]);
     return result.rows[0];
   },
 
   // Record check-out (update the latest open record)
-  async checkOut(employeeId, latitude, longitude) {
+  async checkOut(employeeId, latitude, longitude, locationCode = null) {
     const query = `
       UPDATE attendance 
       SET check_out_time = CURRENT_TIMESTAMP,
@@ -232,6 +232,7 @@ const attendanceDb = {
           check_out_longitude = $3,
           total_hours = EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - check_in_time)) / 3600,
           updated_at = CURRENT_TIMESTAMP
+          ${locationCode ? ', location_code = $4' : ''}
       WHERE employee_id = $1 
       AND attendance_date = CURRENT_DATE
       AND check_out_time IS NULL
@@ -245,9 +246,12 @@ const attendanceDb = {
       )
       RETURNING id, employee_id, attendance_date, check_in_time, check_out_time,
                check_in_latitude, check_in_longitude, check_out_latitude, 
-               check_out_longitude, total_hours, location_verified
+               check_out_longitude, total_hours, location_verified, location_code
     `;
-    const result = await db.query(query, [employeeId, latitude, longitude]);
+    const params = locationCode 
+      ? [employeeId, latitude, longitude, locationCode]
+      : [employeeId, latitude, longitude];
+    const result = await db.query(query, params);
     return result.rows[0];
   },
 

@@ -29,7 +29,7 @@ app.get('/health', (req, res) => {
 // Database test endpoint - for debugging only (remove in production)
 app.get('/debug/employees', async (req, res) => {
   try {
-    const query = 'SELECT id, name, email, pin, is_active FROM employees LIMIT 10';
+    const query = 'SELECT id, name, email, pin_code, is_active FROM employees LIMIT 10';
     const result = await db.query(query);
     res.json({
       success: true,
@@ -231,7 +231,7 @@ app.post('/api/attendance/checkin', async (req, res) => {
     console.log('Request timestamp:', new Date().toISOString());
     console.log('==============================');
     
-    const { employee_id, latitude, longitude, location_id } = req.body;
+    const { employee_id, latitude, longitude, location_id, location_code } = req.body;
     
     // Log extracted parameters
     console.log('Extracted parameters:');
@@ -239,6 +239,7 @@ app.post('/api/attendance/checkin', async (req, res) => {
     console.log('- latitude:', latitude, '(type:', typeof latitude, ')');
     console.log('- longitude:', longitude, '(type:', typeof longitude, ')');
     console.log('- location_id:', location_id, '(type:', typeof location_id, ')');
+    console.log('- location_code:', location_code, '(type:', typeof location_code, ')');
     
     // Validate input
     if (!employee_id) {
@@ -310,7 +311,8 @@ app.post('/api/attendance/checkin', async (req, res) => {
       employee_id, 
       latitude, 
       longitude, 
-      locationVerified
+      locationVerified,
+      location_code
     );
     
     // Get today's summary
@@ -330,6 +332,7 @@ app.post('/api/attendance/checkin', async (req, res) => {
         },
         location_verified: attendance.location_verified,
         location_name: locationName,
+        location_code: attendance.location_code,
         daily_summary: dailySummary,
         server_time: new Date().toISOString()
       }
@@ -443,7 +446,18 @@ app.post('/api/auth/login', async (req, res) => {
 // Check-out route - Check out from current session
 app.post('/api/attendance/checkout', async (req, res) => {
   try {
-    const { employee_id, latitude, longitude } = req.body;
+    const { employee_id, latitude, longitude, location_code } = req.body;
+    
+    // Log all received parameters for debugging
+    console.log('=== CHECK-OUT REQUEST DEBUG ===');
+    console.log('Request body:', JSON.stringify(req.body, null, 2));
+    console.log('Request timestamp:', new Date().toISOString());
+    console.log('Extracted parameters:');
+    console.log('- employee_id:', employee_id, '(type:', typeof employee_id, ')');
+    console.log('- latitude:', latitude, '(type:', typeof latitude, ')');
+    console.log('- longitude:', longitude, '(type:', typeof longitude, ')');
+    console.log('- location_code:', location_code, '(type:', typeof location_code, ')');
+    console.log('==============================');
     
     // Validate input
     if (!employee_id) {
@@ -487,7 +501,7 @@ app.post('/api/attendance/checkout', async (req, res) => {
     }
     
     // Record check-out
-    const attendance = await attendanceDb.checkOut(employee_id, latitude, longitude);
+    const attendance = await attendanceDb.checkOut(employee_id, latitude, longitude, location_code);
     
     if (!attendance) {
       return res.status(500).json({
@@ -520,6 +534,7 @@ app.post('/api/attendance/checkout', async (req, res) => {
           }
         },
         location_verified: attendance.location_verified,
+        location_code: attendance.location_code,
         daily_summary: dailySummary,
         server_time: new Date().toISOString()
       }
