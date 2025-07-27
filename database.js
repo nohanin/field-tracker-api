@@ -299,6 +299,48 @@ const attendanceDb = {
     `;
     const result = await db.query(query, [employeeId, limit]);
     return result.rows;
+  },
+
+  // Get last N days attendance summary
+  async getLastNDaysSummary(employeeId, days = 7) {
+    const query = `
+      SELECT 
+        attendance_date as date,
+        COUNT(*) as sessions,
+        COUNT(CASE WHEN check_out_time IS NOT NULL THEN 1 END) as completed_sessions,
+        COUNT(CASE WHEN check_out_time IS NULL THEN 1 END) as ongoing_sessions,
+        MIN(check_in_time) as first_check_in,
+        MAX(check_out_time) as last_check_out,
+        CASE 
+          WHEN MIN(check_in_time) IS NOT NULL AND MAX(check_out_time) IS NOT NULL THEN
+            EXTRACT(EPOCH FROM (MAX(check_out_time) - MIN(check_in_time))) / 3600
+          ELSE NULL
+        END as total_day_duration,
+        COALESCE(SUM(total_hours), 0) as total_hours_worked,
+        ROUND(AVG(CASE WHEN total_hours IS NOT NULL THEN total_hours END), 2) as avg_session_duration
+      FROM attendance 
+      WHERE employee_id = $1 
+      AND attendance_date >= CURRENT_DATE - INTERVAL '$2 days'
+      AND attendance_date <= CURRENT_DATE
+      GROUP BY attendance_date
+      ORDER BY attendance_date DESC
+    `;
+    const result = await db.query(query, [employeeId, days - 1]);
+    
+    // Format the results for better readability
+    return result.rows.map(row => ({
+      date: row.date,
+      sessions: parseInt(row.sessions),
+      completed_sessions: parseInt(row.completed_sessions),
+      ongoing_sessions: parseInt(row.ongoing_sessions),
+      first_check_in: row.first_check_in,
+      last_check_out: row.last_check_out,
+      total_day_duration: row.total_day_duration ? parseFloat(row.total_day_duration).toFixed(2) : null,
+      total_hours_worked: parseFloat(row.total_hours_worked),
+      avg_session_duration: row.avg_session_duration ? parseFloat(row.avg_session_duration) : null,
+      duration_formatted: row.total_day_duration ? 
+        `${Math.floor(row.total_day_duration)}h ${Math.round((row.total_day_duration % 1) * 60)}m` : null
+    }));
   }
 };
 

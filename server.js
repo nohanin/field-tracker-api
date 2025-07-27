@@ -650,6 +650,78 @@ app.get('/api/attendance/status/:employee_id', async (req, res) => {
   }
 });
 
+// Get last N days attendance summary
+app.get('/api/attendance/summary/:employee_id', async (req, res) => {
+  try {
+    const { employee_id } = req.params;
+    const { days = 7 } = req.query; // Default to 7 days if not specified
+    
+    // Log request for debugging
+    console.log('=== ATTENDANCE SUMMARY REQUEST ===');
+    console.log('Employee ID:', employee_id);
+    console.log('Days requested:', days);
+    console.log('==================================');
+    
+    if (!employee_id) {
+      return res.status(400).json({
+        success: false,
+        message: 'Employee ID is required'
+      });
+    }
+    
+    // Validate days parameter
+    const numDays = parseInt(days);
+    if (isNaN(numDays) || numDays < 1 || numDays > 365) {
+      return res.status(400).json({
+        success: false,
+        message: 'Days parameter must be a number between 1 and 365'
+      });
+    }
+    
+    // Check if employee exists
+    const employee = await employeeDb.getById(employee_id);
+    if (!employee) {
+      return res.status(404).json({
+        success: false,
+        message: 'Employee not found'
+      });
+    }
+    
+    // Get last N days summary
+    const summaryData = await attendanceDb.getLastNDaysSummary(employee_id, numDays);
+    
+    const response = {
+      success: true,
+      employee_id: employee_id,
+      employee_name: employee.name,
+      period: {
+        days_requested: numDays,
+        from_date: new Date(Date.now() - (numDays - 1) * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        to_date: new Date().toISOString().split('T')[0]
+      },
+      summary: summaryData,
+      total_days_with_attendance: summaryData.length,
+      server_time: new Date().toISOString()
+    };
+    
+    console.log('Summary generated:', {
+      employee_id: employee_id,
+      days_requested: numDays,
+      records_found: summaryData.length
+    });
+    
+    res.json(response);
+    
+  } catch (error) {
+    console.error('Attendance summary error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error while fetching attendance summary',
+      error: error.message
+    });
+  }
+});
+
 // Root route - API documentation
 app.get('/', (req, res) => {
   res.json({
@@ -664,7 +736,8 @@ app.get('/', (req, res) => {
       attendance: {
         checkin: 'POST /api/attendance/checkin (body: employee_id, latitude, longitude, location_code, location_type)',
         checkout: 'POST /api/attendance/checkout (body: employee_id, latitude, longitude, location_code, location_type)',
-        status: 'GET /api/attendance/status/:employee_id'
+        status: 'GET /api/attendance/status/:employee_id',
+        summary: 'GET /api/attendance/summary/:employee_id?days=N (default: 7 days)'
       },
       locations: {
         search: 'GET /api/locations/search?location_code=&location_type=',
@@ -673,7 +746,8 @@ app.get('/', (req, res) => {
       }
     },
     notes: {
-      location_type: 'When location_type is "others", location_code is stored as-is without location verification'
+      location_type: 'When location_type is "others", location_code is stored as-is without location verification',
+      summary_api: 'Returns last N days attendance summary with date, sessions, first check-in, last check-out, and duration'
     }
   });
 });
