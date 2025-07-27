@@ -692,16 +692,7 @@ app.get('/api/attendance/summary/:employee_id', async (req, res) => {
     
     const response = {
       success: true,
-      employee_id: employee_id,
-      employee_name: employee.name,
-      period: {
-        days_requested: numDays,
-        from_date: new Date(Date.now() - (numDays - 1) * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-        to_date: new Date().toISOString().split('T')[0]
-      },
-      summary: summaryData,
-      total_days_with_attendance: summaryData.length,
-      server_time: new Date().toISOString()
+      data: summaryData
     };
     
     console.log('Summary generated:', {
