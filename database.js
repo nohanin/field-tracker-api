@@ -320,7 +320,7 @@ const attendanceDb = {
         ROUND(AVG(CASE WHEN total_hours IS NOT NULL THEN total_hours END), 2) as avg_session_duration
       FROM attendance 
       WHERE employee_id = $1 
-      AND attendance_date >= CURRENT_DATE - INTERVAL '$2 days'
+      AND attendance_date >= CURRENT_DATE - INTERVAL '1 day' * $2
       AND attendance_date <= CURRENT_DATE
       GROUP BY attendance_date
       ORDER BY attendance_date DESC
