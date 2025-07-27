@@ -687,7 +687,7 @@ app.get('/api/attendance/summary/:employee_id', async (req, res) => {
       });
     }
     
-    // Get last N days summary
+    // Get last N days summary//10
     const summaryData = await attendanceDb.getLastNDaysSummary(employee_id, numDays);
     
     const response = {
